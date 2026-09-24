@@ -1,161 +1,815 @@
 <!DOCTYPE html>
+
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- 모바일 화면 대응 -->
+
+<meta name="viewport"
+   content="width=device-width,
+            initial-scale=1.0,
+            maximum-scale=1.0,
+            user-scalable=no,
+            viewport-fit=cover">
+
 <meta name="theme-color" content="#2d6a4f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+
 <link rel="manifest" href="manifest.json">
+
 <title>미친 공룡게임</title>
+
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html {
+    width: 100%;
+    min-height: 100%;
     background: #f7f7f7;
+  }
+
+  body {
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh;
+
+    background: #f7f7f7;
+
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+
     font-family: 'Courier New', Courier, monospace;
-    overflow: hidden;
-  }
-  #game {
-    width: 800px;
-    max-width: 95vw;
-    background: #fff;
-    border: 3px solid #333;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.15);
-    position: relative;
-  }
-  canvas {
-    display: block;
-    margin: 0 auto;
-    width: 750px;
-    max-width: 100%;
-    height: 300px;
-    background: #fcfcfa;
-    border: 2px solid #e0e0e0;
-    border-radius: 6px;
-    touch-action: none;
+
+    /*
+     * 모바일에서 화면보다 게임이 커졌을 경우
+     * 페이지 자체는 스크롤 가능하게 합니다.
+     */
+    overflow-x: hidden;
+    overflow-y: auto;
+
+    padding:
+      max(8px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left));
+
     -webkit-user-select: none;
     user-select: none;
+
+    /*
+     * 모바일 브라우저의 터치 확대/지연 최소화
+     */
+    touch-action: manipulation;
   }
-  .hud {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 2px 0;
-    font-weight: bold;
-    font-size: 16px;
-    color: #333;
+
+  /* =========================
+     게임 전체
+     ========================= */
+
+  #game {
+    width: min(800px, calc(100vw - 16px));
+
+    /*
+     * 화면이 좁아지면 자동으로 축소
+     */
+    max-width: 800px;
+
+    background: #fff;
+
+    border: 3px solid #333;
+    border-radius: 8px;
+
+    padding: clamp(10px, 2.5vw, 20px);
+
+    box-shadow: 0 8px 24px rgba(0,0,0,.15);
+
+    position: relative;
+
+    /*
+     * 모바일에서 너무 높은 게임 때문에
+     * 화면 아래가 잘리는 것을 방지
+     */
+    margin: auto;
   }
-  h1 { text-align: center; font-size: 22px; margin-bottom: 6px; color: #333; }
-  #msg {
+
+  /* =========================
+     제목
+     ========================= */
+
+  h1 {
     text-align: center;
-    font-size: 20px;
-    font-weight: bold;
-    color: #e74c3c;
-    padding: 8px 0;
-    min-height: 38px;
+
+    font-size: clamp(18px, 4vw, 22px);
+
+    margin-bottom: 6px;
+
+    color: #333;
+
+    line-height: 1.3;
   }
+
+  /* =========================
+     캔버스
+     ========================= */
+
+  canvas {
+    display: block;
+
+    margin: 0 auto;
+
+    /*
+     * 실제 게임 해상도는 750x300 그대로 유지.
+     * 화면 표시 크기만 자동 조절.
+     */
+    width: 100%;
+    max-width: 750px;
+
+    height: auto;
+
+    /*
+     * 750 / 300 = 2.5
+     */
+    aspect-ratio: 750 / 300;
+
+    background: #fcfcfa;
+
+    border: 2px solid #e0e0e0;
+    border-radius: 6px;
+
+    touch-action: none;
+
+    -webkit-user-select: none;
+    user-select: none;
+
+    /*
+     * 캔버스가 작아져도 브라우저가
+     * 이미지처럼 이상하게 늘리지 않도록
+     */
+    image-rendering: auto;
+  }
+
+  /* =========================
+     HUD
+     ========================= */
+
+  .hud {
+    display: grid;
+
+    /*
+     * PC에서는 한 줄,
+     * 모바일에서는 자동으로 여러 줄.
+     */
+    grid-template-columns: repeat(
+      auto-fit,
+      minmax(min(145px, 30%), 1fr)
+    );
+
+    gap: 5px 12px;
+
+    align-items: center;
+
+    padding: 10px 2px 0;
+
+    font-weight: bold;
+
+    font-size: clamp(11px, 2.2vw, 16px);
+
+    color: #333;
+
+    line-height: 1.35;
+  }
+
+  .hud span {
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  /* =========================
+     입력 기록
+     ========================= */
+
   #keyCountsPanel {
     text-align: center;
-    font-size: 13px;
+
+    font-size: clamp(10px, 2vw, 13px);
+
     color: #555;
+
     padding: 6px 10px;
+
     min-height: 22px;
+
     background: #f5f5f5;
+
     border-radius: 4px;
+
     margin-top: 8px;
+
     font-family: 'Courier New', Courier, monospace;
-    white-space: pre-wrap;
-    word-break: break-all;
+
+    white-space: normal;
+
+    word-break: break-word;
+
+    line-height: 1.5;
   }
-  #startPanel { text-align: center; padding: 14px 0 4px; }
-  #startPanel h2 { font-size: 18px; margin-bottom: 10px; color: #333; }
-  .difficulty-list { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-  .difficulty-list label { cursor: pointer; border: 2px solid #d6d6d6; border-radius: 6px; padding: 7px 10px; color: #444; font-size: 14px; }
-  .difficulty-list label:has(input:checked) { border-color: #2d6a4f; background: #e8f4ed; color: #24583f; }
-  .difficulty-list input { margin-right: 4px; }
-  .diff-best { font-size: 11px; color: #888; margin-left: 6px; font-weight: normal; }
-  #startButton { border: 0; border-radius: 6px; padding: 10px 24px; background: #2d6a4f; color: #fff; font: inherit; font-weight: bold; cursor: pointer; }
-  #startButton:hover { background: #24583f; }
+
+  /* =========================
+     메시지
+     ========================= */
+
+  #msg {
+    text-align: center;
+
+    font-size: clamp(14px, 3.5vw, 20px);
+
+    font-weight: bold;
+
+    color: #e74c3c;
+
+    padding: 8px 4px;
+
+    min-height: 38px;
+
+    line-height: 1.35;
+  }
+
+  /* =========================
+     시작 패널
+     ========================= */
+
+  #startPanel {
+    text-align: center;
+
+    padding: 14px 0 4px;
+  }
+
+  #startPanel h2 {
+    font-size: clamp(15px, 3.5vw, 18px);
+
+    margin-bottom: 10px;
+
+    color: #333;
+  }
+
+  /* =========================
+     난이도 버튼
+     ========================= */
+
+  .difficulty-list {
+    display: flex;
+
+    justify-content: center;
+
+    align-items: stretch;
+
+    flex-wrap: wrap;
+
+    gap: 8px;
+
+    margin-bottom: 12px;
+  }
+
+  .difficulty-list label {
+    cursor: pointer;
+
+    border: 2px solid #d6d6d6;
+
+    border-radius: 6px;
+
+    padding: 8px 10px;
+
+    color: #444;
+
+    font-size: clamp(12px, 2.8vw, 14px);
+
+    /*
+     * 모바일에서 터치하기 쉬운 크기
+     */
+    min-height: 40px;
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    transition:
+      background .15s ease,
+      border-color .15s ease;
+  }
+
+  .difficulty-list label:has(input:checked) {
+    border-color: #2d6a4f;
+
+    background: #e8f4ed;
+
+    color: #24583f;
+  }
+
+  .difficulty-list input {
+    margin-right: 4px;
+
+    /*
+     * 모바일에서 라디오 버튼 터치 영역 확보
+     */
+    width: 16px;
+    height: 16px;
+  }
+
+  .diff-best {
+    font-size: 11px;
+
+    color: #888;
+
+    margin-left: 6px;
+
+    font-weight: normal;
+  }
+
+  /* =========================
+     시작 버튼
+     ========================= */
+
+  #startButton,
+  #resetBestButton {
+    border: 0;
+
+    border-radius: 6px;
+
+    padding: 11px 24px;
+
+    min-height: 44px;
+
+    background: #2d6a4f;
+
+    color: #fff;
+
+    font: inherit;
+
+    font-weight: bold;
+
+    cursor: pointer;
+
+    touch-action: manipulation;
+
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  #startButton:hover {
+    background: #24583f;
+  }
+
+  #resetBestButton {
+    background: #c0392b !important;
+  }
+
+  #startButton:active,
+  #resetBestButton:active {
+    transform: scale(.97);
+  }
+
+  /* =========================
+     로딩 화면
+     ========================= */
+
   #loadingScreen {
     position: absolute;
+
     z-index: 10;
+
     inset: 0;
+
     display: flex;
+
     flex-direction: column;
+
     justify-content: center;
+
     align-items: center;
+
     gap: 12px;
+
     background: #fff;
+
     border-radius: 5px;
+
     color: #2d6a4f;
+
     text-align: center;
+
+    padding: 20px;
   }
-  #loadingScreen h2 { font-size: 22px; }
+
+  #loadingScreen h2 {
+    font-size: clamp(17px, 4vw, 22px);
+
+    line-height: 1.35;
+  }
+
   #loadingBar {
-    width: 72%;
+    width: min(72%, 500px);
+
     height: 12px;
+
     overflow: hidden;
+
     border: 2px solid #2d6a4f;
+
     border-radius: 8px;
   }
+
   #loadingBar::after {
     content: '';
+
     display: block;
+
     width: 42%;
+
     height: 100%;
+
     border-radius: 6px;
+
     background: #2d6a4f;
+
     animation: fakeLoading 1.2s ease-in-out infinite;
   }
-  #loadingTip { min-height: 20px; padding: 0 18px; font-size: 13px; color: #555; }
+
+  #loadingTip {
+    min-height: 20px;
+
+    padding: 0 18px;
+
+    font-size: clamp(11px, 2.5vw, 13px);
+
+    color: #555;
+
+    line-height: 1.5;
+  }
+
   @keyframes fakeLoading {
-    from { transform: translateX(-120%); }
-    to { transform: translateX(280%); }
+    from {
+      transform: translateX(-120%);
+    }
+
+    to {
+      transform: translateX(280%);
+    }
+  }
+
+  /* =========================
+     작은 스마트폰
+     ========================= */
+
+  @media (max-width: 480px) {
+
+    body {
+      align-items: flex-start;
+
+      padding-top:
+        max(6px, env(safe-area-inset-top));
+    }
+
+    #game {
+      width: calc(100vw - 12px);
+
+      border-width: 2px;
+
+      border-radius: 7px;
+
+      padding: 8px;
+    }
+
+    h1 {
+      font-size: 18px;
+
+      margin-bottom: 5px;
+    }
+
+    .hud {
+      grid-template-columns: repeat(2, 1fr);
+
+      gap: 4px 8px;
+
+      font-size: 11px;
+
+      padding-top: 8px;
+    }
+
+    .hud span {
+      text-align: center;
+
+      overflow: hidden;
+
+      text-overflow: ellipsis;
+    }
+
+    #keyCountsPanel {
+      font-size: 10px;
+
+      padding: 5px;
+    }
+
+    #msg {
+      font-size: 14px;
+
+      min-height: 34px;
+
+      padding: 6px 2px;
+    }
+
+    .difficulty-list {
+      gap: 5px;
+    }
+
+    .difficulty-list label {
+      padding: 7px 8px;
+
+      min-height: 38px;
+
+      font-size: 11px;
+    }
+
+    .diff-best {
+      font-size: 9px;
+
+      margin-left: 3px;
+    }
+
+    #startButton,
+    #resetBestButton {
+      width: min(280px, 90%);
+
+      min-height: 46px;
+    }
+  }
+
+  /* =========================
+     매우 작은 화면
+     ========================= */
+
+  @media (max-width: 360px) {
+
+    #game {
+      width: calc(100vw - 8px);
+
+      padding: 6px;
+    }
+
+    .hud {
+      font-size: 10px;
+
+      gap: 3px 5px;
+    }
+
+    .difficulty-list label {
+      width: calc(50% - 4px);
+
+      font-size: 10px;
+    }
+
+    .diff-best {
+      display: none;
+    }
+  }
+
+  /* =========================
+     가로모드 모바일
+     ========================= */
+
+  @media (max-height: 500px) and (orientation: landscape) {
+
+    body {
+      align-items: flex-start;
+
+      overflow-y: auto;
+    }
+
+    #game {
+      margin-top: 6px;
+      margin-bottom: 6px;
+    }
+
+    h1 {
+      font-size: 17px;
+
+      margin-bottom: 3px;
+    }
+
+    #msg {
+      min-height: 28px;
+
+      padding: 4px;
+    }
+
+    .hud {
+      padding-top: 5px;
+    }
+
+    #keyCountsPanel {
+      margin-top: 4px;
+
+      padding: 4px;
+    }
+
+    #startPanel {
+      padding-top: 7px;
+    }
+
+    .difficulty-list {
+      margin-bottom: 7px;
+    }
+  }
+
+  /* =========================
+     터치 디바이스
+     ========================= */
+
+  @media (hover: none) and (pointer: coarse) {
+
+    #startButton,
+    #resetBestButton,
+    .difficulty-list label {
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /*
+     * 모바일에서는 클릭 후 파란색 선택 표시 제거
+     */
+    canvas {
+      -webkit-tap-highlight-color: transparent;
+    }
   }
 </style>
+
 </head>
+
 <body>
+
 <div id="game">
+
   <div id="loadingScreen">
-    <h2>공룡 발자국 불러오는 중...</h2>
-    <div id="loadingBar"></div>
-    <div id="loadingTip"></div>
+
+```
+<h2>공룡 발자국 불러오는 중...</h2>
+
+<div id="loadingBar"></div>
+
+<div id="loadingTip"></div>
+```
+
   </div>
+
   <h1>미친 공룡게임</h1>
-  <canvas id="canvas" width="750" height="300"></canvas>
+
+  <!--
+    실제 게임 해상도:
+    750 × 300
+
+    CSS로 화면 크기에 맞게 자동 축소됩니다.
+  -->
+
+<canvas
+ id="canvas"
+ width="750"
+ height="300"> </canvas>
+
   <div class="hud">
-    <span id="score">점수: 0</span>
-    <span id="speed">속도: x1</span>
-    <span id="combo">연타: 0/5</span>
-    <span id="totalCombo">누적 연타: 0</span>
-    <span id="totalJumps">총 점프: 0</span>
-    <span>최고: <span id="bestVal">0</span></span>
+
+```
+<span id="score">점수: 0</span>
+
+<span id="speed">속도: x1</span>
+
+<span id="combo">연타: 0/5</span>
+
+<span id="totalCombo">누적 연타: 0</span>
+
+<span id="totalJumps">총 점프: 0</span>
+
+<span>
+  최고: <span id="bestVal">0</span>
+</span>
+```
+
   </div>
-  <div id="keyCountsPanel">입력 기록: 없음</div>
-  <div id="msg">아무 버튼을 눌러 점프!</div>
+
+  <div id="keyCountsPanel">
+    입력 기록: 없음
+  </div>
+
+  <div id="msg">
+    아무 버튼을 눌러 점프!
+  </div>
+
   <div id="startPanel" style="display: none;">
-    <h2>난이도를 선택하세요</h2>
-    <div class="difficulty-list">
-      <label><input type="radio" name="difficulty" value="easy" checked> 쉬움 <span class="diff-best" data-diff="easy"></span></label>
-      <label><input type="radio" name="difficulty" value="normal"> 중간 <span class="diff-best" data-diff="normal"></span></label>
-      <label><input type="radio" name="difficulty" value="hard"> 어려움 <span class="diff-best" data-diff="hard"></span></label>
-      <label><input type="radio" name="difficulty" value="insane"> 미침 <span class="diff-best" data-diff="insane"></span></label>
-      <label><input type="radio" name="difficulty" value="doomed"> ㅈ됨 <span class="diff-best" data-diff="doomed"></span></label>
-      <label><input type="radio" name="difficulty" value="comboTest"> 연타 테스트 <span class="diff-best" data-diff="comboTest"></span></label>
-    </div>
-    <button id="startButton" type="button">게임 시작</button>
-    <button id="resetBestButton" type="button" style="margin-top: 10px; background: #c0392b;">최고 기록 초기화</button>
+
+```
+<h2>난이도를 선택하세요</h2>
+
+<div class="difficulty-list">
+
+  <label>
+    <input
+      type="radio"
+      name="difficulty"
+      value="easy"
+      checked>
+    쉬움
+    <span
+      class="diff-best"
+      data-diff="easy"></span>
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="difficulty"
+      value="normal">
+    중간
+    <span
+      class="diff-best"
+      data-diff="normal"></span>
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="difficulty"
+      value="hard">
+    어려움
+    <span
+      class="diff-best"
+      data-diff="hard"></span>
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="difficulty"
+      value="insane">
+    미침
+    <span
+      class="diff-best"
+      data-diff="insane"></span>
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="difficulty"
+      value="doomed">
+    ㅈ됨
+    <span
+      class="diff-best"
+      data-diff="doomed"></span>
+  </label>
+
+  <label>
+    <input
+      type="radio"
+      name="difficulty"
+      value="comboTest">
+    연타 테스트
+    <span
+      class="diff-best"
+      data-diff="comboTest"></span>
+  </label>
+
+</div>
+
+<button id="startButton" type="button">
+  게임 시작
+</button>
+
+<br>
+
+<button
+  id="resetBestButton"
+  type="button"
+  style="margin-top: 10px;">
+  최고 기록 초기화
+</button>
+```
+
   </div>
+
 </div>
 
 <script>
 (function () {
+
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
+
   const scoreEl = document.getElementById('score');
   const speedEl = document.getElementById('speed');
   const comboEl = document.getElementById('combo');
@@ -164,18 +818,41 @@
   const keyCountsEl = document.getElementById('keyCountsPanel');
   const bestEl = document.getElementById('bestVal');
   const msgEl = document.getElementById('msg');
-  const loadingScreen = document.getElementById('loadingScreen');
-  const loadingTip = document.getElementById('loadingTip');
-  const startPanel = document.getElementById('startPanel');
-  const startButton = document.getElementById('startButton');
-  const resetBestButton = document.getElementById('resetBestButton');
 
-  // 기기 감지
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod|Touch/i.test(navigator.userAgent);
-  const inputTypeLabel = isMobile ? 'Touch' : 'MouseBL';
+  const loadingScreen =
+    document.getElementById('loadingScreen');
 
-  // 로딩 화면 관련
+  const loadingTip =
+    document.getElementById('loadingTip');
+
+  const startPanel =
+    document.getElementById('startPanel');
+
+  const startButton =
+    document.getElementById('startButton');
+
+  const resetBestButton =
+    document.getElementById('resetBestButton');
+
+
+  /* =========================
+     기기 감지
+     ========================= */
+
+  const isMobile =
+    /Mobi|Android|iPhone|iPad|iPod|Touch/i
+      .test(navigator.userAgent);
+
+  const inputTypeLabel =
+    isMobile ? 'Touch' : 'MouseBL';
+
+
+  /* =========================
+     로딩 문구
+     ========================= */
+
   const loadingTexts = {
+
     start: [
       '공룡 근육 풀리는 중...',
       '선인장 위치 협상 중...',
@@ -183,6 +860,7 @@
       '중력 상수 조정 중...',
       '연타 카운터 초기화 중...'
     ],
+
     over: [
       '공룡 부활 주문 외우는 중...',
       '장애물 치우는 중...',
@@ -190,715 +868,2405 @@
       '최고 기록 갱신 확인 중...',
       '다음 판 준비 중...'
     ]
+
   };
 
+
   function showLoadingScreen(type, onComplete) {
-    const texts = loadingTexts[type];
-    const title = type === 'start' ? '공룡의 잠재력을 준비하는 중...' : '공룡이 힘들다고 고집부리는 중...';
-    loadingScreen.querySelector('h2').textContent = title;
+
+    const title =
+      type === 'start'
+        ? '공룡의 잠재력을 준비하는 중...'
+        : '공룡이 힘들다고 고집부리는 중...';
+
+    loadingScreen
+      .querySelector('h2')
+      .textContent = title;
+
     loadingScreen.style.display = 'flex';
+
     startPanel.style.display = 'none';
-    
-    let tipIndex = Math.floor(Math.random() * loadingTips.length);
-    loadingTip.textContent = loadingTips[tipIndex];
+
+    let tipIndex =
+      Math.floor(
+        Math.random() * loadingTips.length
+      );
+
+    loadingTip.textContent =
+      loadingTips[tipIndex];
+
     const tipTimer = setInterval(() => {
-      tipIndex = (tipIndex + 1) % loadingTips.length;
-      loadingTip.textContent = loadingTips[tipIndex];
+
+      tipIndex =
+        (tipIndex + 1) %
+        loadingTips.length;
+
+      loadingTip.textContent =
+        loadingTips[tipIndex];
+
     }, 1500);
-    
-    const duration = 3000 + Math.random() * 2000;
+
+    const duration =
+      3000 + Math.random() * 2000;
+
     setTimeout(() => {
+
       clearInterval(tipTimer);
+
       loadingScreen.style.display = 'none';
+
       onComplete();
+
     }, duration);
   }
 
+
+  /* =========================
+     게임 기본값
+     ========================= */
+
   const GROUND_Y = 250;
+
   const W = canvas.width;
+
   const H = canvas.height;
 
+
   let over = false;
+
   let started = false;
+
   let score = 0;
+
   let best = 0;
+
   let bestScores = {};
-  try { bestScores = JSON.parse(localStorage.getItem('dinoBestScores') || '{}'); } catch (e) {}
-  bestEl.textContent = bestScores.easy || 0;
+
+
+  try {
+
+    bestScores =
+      JSON.parse(
+        localStorage.getItem('dinoBestScores') || '{}'
+      );
+
+  } catch (e) {
+
+    bestScores = {};
+
+  }
+
+
+  bestEl.textContent =
+    bestScores.easy || 0;
+
 
   const BASE_SPEED = 6;
-  const DIFFICULTIES = {
-    easy:   { speedInterval: Infinity, spawnMin: 1200, spawnRandom: 900, maxCombo: Infinity, speedStep: 1 },
-    normal: { speedInterval: 60000,    spawnMin:  700, spawnRandom: 600, maxCombo: 30, speedStep: 1.2 },
-    hard:   { speedInterval: 15000,    spawnMin:  450, spawnRandom: 350, maxCombo: 15, speedStep: 1.8 },
-    insane: { speedInterval: 300,      spawnMin:  100, spawnRandom:  80,  maxCombo: 200, speedStep: 3 },
-    doomed: { speedInterval: 50,       spawnMin:   50, spawnRandom:  30,  maxCombo: 100, speedStep: 5 },
-    comboTest: { speedInterval: 50,     spawnMin:   40, spawnRandom:  20,  maxCombo: Infinity, speedStep: 4, multiSpawn: true }
-  };
-  let difficulty = DIFFICULTIES.easy;
 
-  // 게임 상태 변수
-  let dino = {
-    x: 60, y: GROUND_Y, w: 44, h: 46,
-    vy: 0, onGround: true
+
+  const DIFFICULTIES = {
+
+    easy: {
+      speedInterval: Infinity,
+      spawnMin: 1200,
+      spawnRandom: 900,
+      maxCombo: Infinity,
+      speedStep: 1
+    },
+
+    normal: {
+      speedInterval: 60000,
+      spawnMin: 700,
+      spawnRandom: 600,
+      maxCombo: 30,
+      speedStep: 1.2
+    },
+
+    hard: {
+      speedInterval: 15000,
+      spawnMin: 450,
+      spawnRandom: 350,
+      maxCombo: 15,
+      speedStep: 1.8
+    },
+
+    insane: {
+      speedInterval: 300,
+      spawnMin: 100,
+      spawnRandom: 80,
+      maxCombo: 200,
+      speedStep: 3
+    },
+
+    doomed: {
+      speedInterval: 50,
+      spawnMin: 50,
+      spawnRandom: 30,
+      maxCombo: 100,
+      speedStep: 5
+    },
+
+    comboTest: {
+      speedInterval: 50,
+      spawnMin: 40,
+      spawnRandom: 20,
+      maxCombo: Infinity,
+      speedStep: 4,
+      multiSpawn: true
+    }
+
   };
+
+
+  let difficulty =
+    DIFFICULTIES.easy;
+
+
+  /* =========================
+     게임 상태
+     ========================= */
+
+  let dino = {
+
+    x: 60,
+
+    y: GROUND_Y,
+
+    w: 44,
+
+    h: 46,
+
+    vy: 0,
+
+    onGround: true
+
+  };
+
+
   let obstacles = [];
+
   let nextSpawn = 1000;
+
   let frame = 0;
+
   let elapsed = 0;
+
   let lastTime = 0;
 
+
+  /* =========================
+     팁
+     ========================= */
+
   const loadingTips = [
+
     '팁: 공룡은 아무 버튼이나 누르면 점프하지만, 아무 생각 없이 누르면 추락합니다.',
+
     '팁: 선인장과 나무는 친구가 아닙니다. 새도 거의 친구가 아닙니다.',
+
     '팁: 미침 난이도에서는 손가락보다 마음가짐이 먼저 지칩니다.',
+
     '팁: 연타는 높이를 올려주지만 자존심까지 올려주지는 않습니다.',
+
     '팁: 최고 기록은 저장되지만, 실수 장면은 기억에 남습니다.',
+
     '팁: ㅈ됨 난이도는 플레이어의 반사신경을 정중하게 무시합니다.',
+
     '팁: 연타 테스트는 손가락이 스스로 생명을 얻고 싶어질 때 시작됩니다.',
+
     '팁: 속도가 빛을 넘어서면 충돌도 시간을 거슬러 올라갑니다.',
+
     '팁: 장애물 사이 간격이 음수가 되면 당신은 이미 클리어한 겁니다.',
+
     '팁: 연타 100회는 손가락이 아니라 영혼으로 찍는 숫자입니다.',
+
     '팁: 공룡의 눈은 사실 레이저인데 전력 부족으로 꺼져 있습니다.',
+
     '팁: 선인장은 사실 공룡의 전생에 빚진 돈을 받으러 온 것입니다.',
-    '팁: 새는 공룡을 괴롭히러 온 게 아니라 인사하러 온 겁니다. 너무 빨라서 못 알아보는 것뿐.',
+
+    '팁: 새는 공룡을 괴롭히러 온 게 아니라 인사하러 온 겁니다.',
+
     '팁: 나무는 가만히 서 있는데 공룡이 박치기하러 달려듭니다.',
+
     '팁: 연타 제한이 무제한이라는 건 손가락에 보험을 들라는 뜻입니다.',
+
     '팁: 속도 x10을 넘으면 공룡은 이미 시간여행자입니다.',
+
     '팁: 장애물이 두 개 겹쳐 나오면 그건 버그가 아니라 사랑입니다.',
+
     '팁: 최고 기록 경신 시 들리는 소리는 당신의 심장 박동입니다.',
+
     '팁: 게임 오버 화면의 "다시 시작"은 사실 "한 번 더 해줘"의 동의어입니다.',
+
     '팁: 난이도 "ㅈ됨"의 ㅈ은 "정말"의 ㅈ이 아닙니다.',
+
     '팁: 연타 테스트 모드에서 1초 버티면 당신은 초인입니다.',
+
     '팁: 공룡의 꼬리는 균형용이 아니라 멋부리기용입니다.',
+
     '팁: 배경의 해는 사실 공룡이 띄운 인공위성입니다.',
+
     '팁: 점프 소리가 기타 히어로처럼 들린다면 당신은 이미 중독입니다.',
-    '팁: 장애물 생성 간격이 10ms면 초당 100개, 1분이면 6000개입니다.',
-    '팁: 연타 200회는 분당 12000타, 피아노 협주곡 수준입니다.',
+
+    '팁: 장애물 생성 간격이 10ms면 초당 100개입니다.',
+
+    '팁: 연타 200회는 분당 12000타입니다.',
+
     '팁: 충돌 판정이 서브 스텝으로 돌아간 건 공룡이 시간을 쪼개 쓰기 때문입니다.',
+
     '팁: 이 게임을 만든 개발자도 미침 난이도는 클리어 못 했습니다.',
+
     '팁: "쉬움"을 고르고 10분 버티면 당신은 인내심의 달인입니다.',
-'팁: 공룡은 멸종하지 않았습니다. 그냥 아주 빨리 뛰고 있을 뿐입니다.',
-     '팁: 이 게임은 2026년 9월 19일에 처음 만들어졌습니다.'
+
+    '팁: 공룡은 멸종하지 않았습니다. 그냥 아주 빨리 뛰고 있을 뿐입니다.',
+
+    '팁: 이 게임은 2026년 9월 19일에 처음 만들어졌습니다.'
+
   ];
-  let loadingTipIndex = Math.floor(Math.random() * loadingTips.length);
-  loadingTip.textContent = loadingTips[loadingTipIndex];
-  const tipTimer = setInterval(() => {
-    loadingTipIndex = (loadingTipIndex + 1) % loadingTips.length;
-    loadingTip.textContent = loadingTips[loadingTipIndex];
-  }, 2000);
-  
-  // 초기 로딩 화면 종료
+
+
+  let loadingTipIndex =
+    Math.floor(
+      Math.random() * loadingTips.length
+    );
+
+
+  loadingTip.textContent =
+    loadingTips[loadingTipIndex];
+
+
+  const tipTimer =
+    setInterval(() => {
+
+      loadingTipIndex =
+        (loadingTipIndex + 1) %
+        loadingTips.length;
+
+      loadingTip.textContent =
+        loadingTips[loadingTipIndex];
+
+    }, 2000);
+
+
   setTimeout(() => {
+
     clearInterval(tipTimer);
-    if (loadingScreen) loadingScreen.style.display = 'none';
-    if (startPanel) startPanel.style.display = 'block';
-    if (msgEl) msgEl.textContent = '난이도를 선택하고 시작 버튼을 눌러주세요';
+
+    if (loadingScreen)
+      loadingScreen.style.display = 'none';
+
+    if (startPanel)
+      startPanel.style.display = 'block';
+
+    if (msgEl)
+      msgEl.textContent =
+        '난이도를 선택하고 시작 버튼을 눌러주세요';
+
   }, 5000 + Math.random() * 2000);
 
-  // ---- 효과음 (Web Audio API) ----
+
+  /* =========================
+     Web Audio
+     ========================= */
+
   let audioCtx = null;
+
+
   function ensureAudio() {
+
     if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+      audioCtx =
+        new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+
     }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    if (audioCtx.state === 'suspended')
+      audioCtx.resume();
+
     return audioCtx;
+
   }
 
-  function playTone(freq, endFreq, dur, type, vol) {
+
+  function playTone(
+    freq,
+    endFreq,
+    dur,
+    type,
+    vol
+  ) {
+
     try {
-      const ctx = ensureAudio();
-      const now = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      const loudness = Math.min((vol || 0.12) * 3.5, 0.95);
-      osc.type = type || 'square';
-      osc.frequency.setValueAtTime(freq, now);
-      if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, now + dur);
-      gain.gain.setValueAtTime(loudness, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
-      osc.connect(gain).connect(ctx.destination);
+
+      const ctx =
+        ensureAudio();
+
+      const now =
+        ctx.currentTime;
+
+      const osc =
+        ctx.createOscillator();
+
+      const gain =
+        ctx.createGain();
+
+      const loudness =
+        Math.min(
+          (vol || 0.12) * 3.5,
+          0.95
+        );
+
+      osc.type =
+        type || 'square';
+
+      osc.frequency
+        .setValueAtTime(freq, now);
+
+      if (endFreq) {
+
+        osc.frequency
+          .exponentialRampToValueAtTime(
+            endFreq,
+            now + dur
+          );
+
+      }
+
+      gain.gain
+        .setValueAtTime(
+          loudness,
+          now
+        );
+
+      gain.gain
+        .exponentialRampToValueAtTime(
+          0.001,
+          now + dur
+        );
+
+      osc
+        .connect(gain)
+        .connect(ctx.destination);
+
       osc.start(now);
+
       osc.stop(now + dur);
+
     } catch (e) {}
+
   }
+
 
   function playJump() {
-    playTone(120, 260, 0.2, 'sawtooth', 0.16);
-    playTone(260, 760, 0.16, 'triangle', 0.18);
+
+    playTone(
+      120,
+      260,
+      0.2,
+      'sawtooth',
+      0.16
+    );
+
+    playTone(
+      260,
+      760,
+      0.16,
+      'triangle',
+      0.18
+    );
+
   }
+
 
   function playCombo(comboCount) {
-    const pitch = 300 + comboCount * 55;
-    playTone(pitch / 2, pitch, 0.16, 'square', 0.13);
-    playTone(pitch, pitch * 1.9, 0.13, 'sine', 0.18);
-    setTimeout(() => playTone(pitch * 1.9, pitch * 2.2, 0.08, 'triangle', 0.12), 55);
+
+    const pitch =
+      300 + comboCount * 55;
+
+    playTone(
+      pitch / 2,
+      pitch,
+      0.16,
+      'square',
+      0.13
+    );
+
+    playTone(
+      pitch,
+      pitch * 1.9,
+      0.13,
+      'sine',
+      0.18
+    );
+
+    setTimeout(() => {
+
+      playTone(
+        pitch * 1.9,
+        pitch * 2.2,
+        0.08,
+        'triangle',
+        0.12
+      );
+
+    }, 55);
+
   }
+
 
   function playMilestone() {
-    playTone(520, 780, 0.12, 'triangle', 0.18);
-    setTimeout(() => playTone(780, 1040, 0.14, 'triangle', 0.18), 110);
+
+    playTone(
+      520,
+      780,
+      0.12,
+      'triangle',
+      0.18
+    );
+
+    setTimeout(() => {
+
+      playTone(
+        780,
+        1040,
+        0.14,
+        'triangle',
+        0.18
+      );
+
+    }, 110);
+
   }
+
 
   function playComboMilestone(comboCount) {
-    // 10콤보마다 (필요시 5콤보로 변경 가능)
-    const isMajor = comboCount % 10 === 0;
-    const basePitch = isMajor ? 660 : 520;
-    playTone(basePitch, basePitch * 1.5, 0.15, isMajor ? 'triangle' : 'sine', 0.2);
+
+    const isMajor =
+      comboCount % 10 === 0;
+
+    const basePitch =
+      isMajor ? 660 : 520;
+
+    playTone(
+      basePitch,
+      basePitch * 1.5,
+      0.15,
+      isMajor
+        ? 'triangle'
+        : 'sine',
+      0.2
+    );
+
     if (isMajor) {
-      setTimeout(() => playTone(basePitch * 1.5, basePitch * 2, 0.18, 'triangle', 0.22), 120);
+
+      setTimeout(() => {
+
+        playTone(
+          basePitch * 1.5,
+          basePitch * 2,
+          0.18,
+          'triangle',
+          0.22
+        );
+
+      }, 120);
+
     }
+
   }
+
 
   function playOver() {
-    playTone(280, 70, 0.55, 'sawtooth', 0.2);
-    setTimeout(() => playTone(120, 45, 0.5, 'triangle', 0.18), 150);
-    setTimeout(() => playTone(90, 35, 0.65, 'square', 0.14), 280);
+
+    playTone(
+      280,
+      70,
+      0.55,
+      'sawtooth',
+      0.2
+    );
+
+    setTimeout(() => {
+
+      playTone(
+        120,
+        45,
+        0.5,
+        'triangle',
+        0.18
+      );
+
+    }, 150);
+
+    setTimeout(() => {
+
+      playTone(
+        90,
+        35,
+        0.65,
+        'square',
+        0.14
+      );
+
+    }, 280);
+
   }
+
 
   let lastMilestone = 0;
+
   let lastComboMilestone = 0;
+
   let comboEffects = [];
+
   let buttonEffects = [];
 
-  // 연타 점프 설정
-  const COMBO_BOOST = -4.5;  // 추가 탭당 상승 속도
-  const MIN_Y = 70;          // 너무 높이 올라가지 않도록(화면 밖 방지)
+
+  /* =========================
+     연타
+     ========================= */
+
+  const COMBO_BOOST = -4.5;
+
+  const MIN_Y = 70;
+
   let combo = 0;
+
   let totalCombo = 0;
+
   let totalJumps = 0;
+
   let keyPressCounts = {};
 
-  // 장애물 히트박스 (px: 좌우 축소, py: 위쪽 축소 → 관대하게)
+
   const HITBOX = {
-    cactus: { px: 5,  py: 12 },
-    tree:   { px: 7,  py: 16 },
-    bird:   { px: 8,  py: 8  }
+
+    cactus: {
+      px: 5,
+      py: 12
+    },
+
+    tree: {
+      px: 7,
+      py: 16
+    },
+
+    bird: {
+      px: 8,
+      py: 8
+    }
+
   };
 
+
   function reset() {
+
     dino = {
-      x: 60, y: GROUND_Y, w: 44, h: 46,
-      vy: 0, onGround: true
+
+      x: 60,
+
+      y: GROUND_Y,
+
+      w: 44,
+
+      h: 46,
+
+      vy: 0,
+
+      onGround: true
+
     };
+
     obstacles = [];
+
     nextSpawn = 1000;
+
     frame = 0;
+
     score = 0;
+
     elapsed = 0;
+
     over = false;
+
     combo = 0;
+
     totalCombo = 0;
+
     totalJumps = 0;
+
     lastComboMilestone = 0;
+
     keyPressCounts = {};
+
     comboEffects = [];
+
     buttonEffects = [];
-    scoreEl.textContent = '점수: 0';
-    speedEl.textContent = '속도: x1.0';
-    comboEl.textContent = '연타: 0/' + comboLimitLabel();
-    totalComboEl.textContent = '누적 연타: 0';
-    totalJumpsEl.textContent = '총 점프: 0';
-    keyCountsEl.textContent = '입력 기록: 없음';
+
+    scoreEl.textContent =
+      '점수: 0';
+
+    speedEl.textContent =
+      '속도: x1.0';
+
+    comboEl.textContent =
+      '연타: 0/' +
+      comboLimitLabel();
+
+    totalComboEl.textContent =
+      '누적 연타: 0';
+
+    totalJumpsEl.textContent =
+      '총 점프: 0';
+
+    keyCountsEl.textContent =
+      '입력 기록: 없음';
+
   }
+
 
   function comboLimitLabel() {
-    return difficulty.maxCombo === Infinity ? '∞' : difficulty.maxCombo;
+
+    return difficulty.maxCombo === Infinity
+      ? '∞'
+      : difficulty.maxCombo;
+
   }
+
 
   function getSpeed() {
-    const increases = difficulty.speedInterval === Infinity
-      ? 0
-      : Math.floor(elapsed / difficulty.speedInterval);
-    return BASE_SPEED + increases * difficulty.speedStep;
+
+    const increases =
+      difficulty.speedInterval === Infinity
+        ? 0
+        : Math.floor(
+            elapsed /
+            difficulty.speedInterval
+          );
+
+    return BASE_SPEED +
+      increases *
+      difficulty.speedStep;
+
   }
+
 
   function jump() {
-    if (!started || over) return;
+
+    if (!started || over)
+      return;
+
     totalJumps++;
-    totalJumpsEl.textContent = '총 점프: ' + totalJumps;
+
+    totalJumpsEl.textContent =
+      '총 점프: ' +
+      totalJumps;
+
     if (dino.onGround) {
-      // 첫 점프
+
       combo = 1;
-      comboEl.textContent = '연타: ' + combo + '/' + comboLimitLabel();
+
+      comboEl.textContent =
+        '연타: 1/' +
+        comboLimitLabel();
+
       dino.vy = -16.5;
+
       dino.onGround = false;
+
       playJump();
-    } else if (combo < difficulty.maxCombo) {
-      // 공중 연타 → 조금씩 높게
-      combo++;
-      totalCombo++;
-      comboEl.textContent = '연타: ' + combo + '/' + comboLimitLabel();
-      totalComboEl.textContent = '누적 연타: ' + totalCombo;
-      dino.vy += COMBO_BOOST;
-      if (combo >= 2) {
-        comboEffects.push({
-          count: combo,
-          x: dino.x + dino.w / 2,
-          y: dino.y - dino.h - 10,
-          life: 0,
-          maxLife: 650
-        });
-        playCombo(combo);
-      }
-      // 10콤보마다 (또는 5콤보) 마일스톤 효과음
-      if (combo % 10 === 0 && combo > lastComboMilestone) {
-        lastComboMilestone = combo;
-        playComboMilestone(combo);
-      }
+
     }
+
+    else if (
+      combo < difficulty.maxCombo
+    ) {
+
+      combo++;
+
+      totalCombo++;
+
+      comboEl.textContent =
+        '연타: ' +
+        combo +
+        '/' +
+        comboLimitLabel();
+
+      totalComboEl.textContent =
+        '누적 연타: ' +
+        totalCombo;
+
+      dino.vy += COMBO_BOOST;
+
+      if (combo >= 2) {
+
+        comboEffects.push({
+
+          count: combo,
+
+          x:
+            dino.x +
+            dino.w / 2,
+
+          y:
+            dino.y -
+            dino.h -
+            10,
+
+          life: 0,
+
+          maxLife: 650
+
+        });
+
+        playCombo(combo);
+
+      }
+
+      if (
+        combo % 10 === 0 &&
+        combo > lastComboMilestone
+      ) {
+
+        lastComboMilestone =
+          combo;
+
+        playComboMilestone(combo);
+
+      }
+
+    }
+
   }
+
 
   function updateComboEffects(dt) {
-    for (const effect of comboEffects) effect.life += dt;
-    comboEffects = comboEffects.filter(effect => effect.life < effect.maxLife);
-    for (const effect of buttonEffects) effect.life += dt;
-    buttonEffects = buttonEffects.filter(effect => effect.life < effect.maxLife);
+
+    for (
+      const effect
+      of comboEffects
+    ) {
+
+      effect.life += dt;
+
+    }
+
+    comboEffects =
+      comboEffects.filter(
+        effect =>
+          effect.life <
+          effect.maxLife
+      );
+
+    for (
+      const effect
+      of buttonEffects
+    ) {
+
+      effect.life += dt;
+
+    }
+
+    buttonEffects =
+      buttonEffects.filter(
+        effect =>
+          effect.life <
+          effect.maxLife
+      );
+
   }
+
+
+  /* =========================
+     장애물
+     ========================= */
 
   function spawnObstacle() {
-    const types = ['cactus', 'tree', 'bird'];
-    const type = types[Math.floor(Math.random() * types.length)];
-    const speed = getSpeed();
-    
-    // 연타 테스트: 장애물 벽 생성 (여러 개 동시에)
-    const count = difficulty.multiSpawn ? 3 + Math.floor(Math.random() * 3) : 1; // 3~5개
-    
-    for (let i = 0; i < count; i++) {
-      const offsetX = i * (60 + Math.random() * 40);
+
+    const types = [
+      'cactus',
+      'tree',
+      'bird'
+    ];
+
+    const type =
+      types[
+        Math.floor(
+          Math.random() *
+          types.length
+        )
+      ];
+
+    const speed =
+      getSpeed();
+
+    const count =
+      difficulty.multiSpawn
+        ? 3 +
+          Math.floor(
+            Math.random() * 3
+          )
+        : 1;
+
+
+    for (
+      let i = 0;
+      i < count;
+      i++
+    ) {
+
+      const offsetX =
+        i *
+        (
+          60 +
+          Math.random() * 40
+        );
+
+
       if (type === 'bird') {
-        const height = (speed >= BASE_SPEED + 2 && Math.random() < 0.5)
-          ? 100
-          : GROUND_Y - 52;
-        obstacles.push({ type, x: W + offsetX, w: 52, h: 38, y: height });
-      } else if (type === 'cactus') {
-        obstacles.push({ type, x: W + offsetX, w: 32, h: 46, y: GROUND_Y - 46 });
-      } else {
-        obstacles.push({ type, x: W + offsetX, w: 40, h: 62, y: GROUND_Y - 62 });
+
+        const height =
+          (
+            speed >=
+              BASE_SPEED + 2 &&
+            Math.random() < 0.5
+          )
+            ? 100
+            : GROUND_Y - 52;
+
+        obstacles.push({
+
+          type,
+
+          x:
+            W + offsetX,
+
+          w: 52,
+
+          h: 38,
+
+          y: height
+
+        });
+
       }
+
+      else if (
+        type === 'cactus'
+      ) {
+
+        obstacles.push({
+
+          type,
+
+          x:
+            W + offsetX,
+
+          w: 32,
+
+          h: 46,
+
+          y:
+            GROUND_Y - 46
+
+        });
+
+      }
+
+      else {
+
+        obstacles.push({
+
+          type,
+
+          x:
+            W + offsetX,
+
+          w: 40,
+
+          h: 62,
+
+          y:
+            GROUND_Y - 62
+
+        });
+
+      }
+
     }
+
   }
+
+
+  /* =========================
+     게임 업데이트
+     ========================= */
 
   function update(dt) {
+
     updateComboEffects(dt);
-    if (!started || over) return;
+
+    if (!started || over)
+      return;
+
     elapsed += dt;
-    const speed = getSpeed();
+
+    const speed =
+      getSpeed();
+
     frame += dt;
 
-    score += dt / 1000 * 10 * speed;
+    score +=
+      dt / 1000 *
+      10 *
+      speed;
 
-    // 점프 물리
+
+    /* 점프 */
+
     if (!dino.onGround) {
+
       dino.vy += 0.85;
+
       dino.y += dino.vy;
+
+
       if (dino.y < MIN_Y) {
+
         dino.y = MIN_Y;
-        if (dino.vy < 0) dino.vy = 0;
+
+        if (dino.vy < 0)
+          dino.vy = 0;
+
       }
+
+
       if (dino.y >= GROUND_Y) {
+
         dino.y = GROUND_Y;
+
         dino.vy = 0;
+
         dino.onGround = true;
+
         combo = 0;
-        comboEl.textContent = '연타: 0/' + comboLimitLabel();
+
+        comboEl.textContent =
+          '연타: 0/' +
+          comboLimitLabel();
+
       }
+
     }
 
-    // 장애물 생성 (일정 간격)
+
+    /* 장애물 생성 */
+
     nextSpawn -= dt;
+
     if (nextSpawn <= 0) {
+
       spawnObstacle();
-      nextSpawn = difficulty.spawnMin + Math.random() * difficulty.spawnRandom;
+
+      nextSpawn =
+        difficulty.spawnMin +
+        Math.random() *
+        difficulty.spawnRandom;
+
     }
 
-    // 장애물 이동 (고속 충돌 방지를 위한 서브 스텝)
+
+    /* 장애물 이동 */
+
     const maxSubStepSpeed = 25;
-    const subSteps = Math.max(1, Math.ceil(speed / maxSubStepSpeed));
-    const stepSpeed = speed / subSteps;
 
-    for (let s = 0; s < subSteps; s++) {
-      for (const o of obstacles) o.x -= stepSpeed;
+    const subSteps =
+      Math.max(
+        1,
+        Math.ceil(
+          speed /
+          maxSubStepSpeed
+        )
+      );
 
-      // 서브 스텝 충돌 판정
-      for (const o of obstacles) {
-        const hb = HITBOX[o.type];
-        const overlapX = dino.x + 8 < o.x + o.w - hb.px && dino.x + dino.w - 8 > o.x + hb.px;
-        const dinoTop = dino.y - dino.h;
-        const dinoBottom = dino.y;
-        const overlapY = dinoTop + 10 < o.y + o.h - hb.py && dinoBottom - 6 > o.y + hb.py;
-        if (overlapX && overlapY) {
+    const stepSpeed =
+      speed /
+      subSteps;
+
+
+    for (
+      let s = 0;
+      s < subSteps;
+      s++
+    ) {
+
+      for (
+        const o
+        of obstacles
+      ) {
+
+        o.x -= stepSpeed;
+
+      }
+
+
+      for (
+        const o
+        of obstacles
+      ) {
+
+        const hb =
+          HITBOX[o.type];
+
+
+        const overlapX =
+          dino.x + 8 <
+            o.x +
+            o.w -
+            hb.px &&
+          dino.x +
+            dino.w -
+            8 >
+            o.x +
+            hb.px;
+
+
+        const dinoTop =
+          dino.y -
+          dino.h;
+
+        const dinoBottom =
+          dino.y;
+
+
+        const overlapY =
+          dinoTop + 10 <
+            o.y +
+            o.h -
+            hb.py &&
+          dinoBottom - 6 >
+            o.y +
+            hb.py;
+
+
+        if (
+          overlapX &&
+          overlapY
+        ) {
+
           over = true;
+
           playOver();
-          msgEl.textContent = '공룡이 죽었습니다! 다시 시작 버튼을 눌러 다시 도전하세요';
-          startButton.textContent = '다시 시작';
-          showLoadingScreen('over', () => {
-            startPanel.style.display = 'block';
-          });
-          const sc = Math.floor(score);
+
+          msgEl.textContent =
+            '공룡이 죽었습니다! 다시 시작 버튼을 눌러 다시 도전하세요';
+
+          startButton.textContent =
+            '다시 시작';
+
+
+          showLoadingScreen(
+            'over',
+            () => {
+
+              startPanel.style.display =
+                'block';
+
+            }
+          );
+
+
+          const sc =
+            Math.floor(score);
+
+
           if (sc > best) {
+
             best = sc;
-            const selected = document.querySelector('input[name="difficulty"]:checked');
-            const diffKey = selected ? selected.value : 'easy';
-            bestScores[diffKey] = best;
-            try { localStorage.setItem('dinoBestScores', JSON.stringify(bestScores)); } catch (e) {}
-            bestEl.textContent = best;
+
+            const selected =
+              document.querySelector(
+                'input[name="difficulty"]:checked'
+              );
+
+            const diffKey =
+              selected
+                ? selected.value
+                : 'easy';
+
+            bestScores[diffKey] =
+              best;
+
+
+            try {
+
+              localStorage.setItem(
+                'dinoBestScores',
+                JSON.stringify(
+                  bestScores
+                )
+              );
+
+            } catch (e) {}
+
+
+            bestEl.textContent =
+              best;
+
           }
+
           return;
+
         }
+
       }
+
     }
 
-    obstacles = obstacles.filter(o => o.x + o.w > -20);
 
-    // 통과 점수
-    for (const o of obstacles) {
-      if (!o.passed && o.x + o.w < dino.x) {
+    obstacles =
+      obstacles.filter(
+        o =>
+          o.x +
+          o.w >
+          -20
+      );
+
+
+    /* 통과 점수 */
+
+    for (
+      const o
+      of obstacles
+    ) {
+
+      if (
+        !o.passed &&
+        o.x +
+          o.w <
+          dino.x
+      ) {
+
         o.passed = true;
+
         score += 50;
+
       }
+
     }
 
-    scoreEl.textContent = '점수: ' + Math.floor(score);
-    speedEl.textContent = '속도: x' + (speed / BASE_SPEED).toFixed(1);
 
-    // 1000점마다 효과음
-    const milestone = Math.floor(score / 1000);
-    if (milestone > lastMilestone) {
-      lastMilestone = milestone;
+    scoreEl.textContent =
+      '점수: ' +
+      Math.floor(score);
+
+
+    speedEl.textContent =
+      '속도: x' +
+      (
+        speed /
+        BASE_SPEED
+      ).toFixed(1);
+
+
+    const milestone =
+      Math.floor(
+        score /
+        1000
+      );
+
+
+    if (
+      milestone >
+      lastMilestone
+    ) {
+
+      lastMilestone =
+        milestone;
+
       playMilestone();
+
     }
+
   }
+
+
+  /* =========================
+     그리기
+     ========================= */
 
   function drawSun() {
-    ctx.fillStyle = '#f2c94c';
+
+    ctx.fillStyle =
+      '#f2c94c';
+
     ctx.beginPath();
-    ctx.arc(W - 90, 45, 22, 0, Math.PI * 2);
+
+    ctx.arc(
+      W - 90,
+      45,
+      22,
+      0,
+      Math.PI * 2
+    );
+
     ctx.fill();
-    ctx.strokeStyle = '#d9953b';
+
+
+    ctx.strokeStyle =
+      '#d9953b';
+
     ctx.lineWidth = 3;
-    for (let i = 0; i < 8; i++) {
-      const a = i * Math.PI / 4;
+
+
+    for (
+      let i = 0;
+      i < 8;
+      i++
+    ) {
+
+      const a =
+        i *
+        Math.PI /
+        4;
+
       ctx.beginPath();
-      ctx.moveTo(W - 90 + Math.cos(a) * 28, 45 + Math.sin(a) * 28);
-      ctx.lineTo(W - 90 + Math.cos(a) * 36, 45 + Math.sin(a) * 36);
+
+      ctx.moveTo(
+        W -
+          90 +
+          Math.cos(a) *
+            28,
+
+        45 +
+          Math.sin(a) *
+            28
+      );
+
+      ctx.lineTo(
+        W -
+          90 +
+          Math.cos(a) *
+            36,
+
+        45 +
+          Math.sin(a) *
+            36
+      );
+
       ctx.stroke();
+
     }
+
   }
+
 
   function drawGround() {
-    ctx.strokeStyle = '#d6d6d6';
+
+    ctx.strokeStyle =
+      '#d6d6d6';
+
     ctx.lineWidth = 2;
+
     ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    ctx.lineTo(W, GROUND_Y);
+
+    ctx.moveTo(
+      0,
+      GROUND_Y
+    );
+
+    ctx.lineTo(
+      W,
+      GROUND_Y
+    );
+
     ctx.stroke();
-    const offset = Math.floor(elapsed / 100) % 40;
-    ctx.fillStyle = '#d6d6d6';
-    for (let x = -offset; x < W; x += 40) {
-      ctx.fillRect(x, GROUND_Y + 4, 16, 3);
-      ctx.fillRect(x + 20, GROUND_Y + 10, 10, 3);
+
+
+    const offset =
+      Math.floor(
+        elapsed /
+        100
+      ) % 40;
+
+
+    ctx.fillStyle =
+      '#d6d6d6';
+
+
+    for (
+      let x = -offset;
+      x < W;
+      x += 40
+    ) {
+
+      ctx.fillRect(
+        x,
+        GROUND_Y + 4,
+        16,
+        3
+      );
+
+      ctx.fillRect(
+        x + 20,
+        GROUND_Y + 10,
+        10,
+        3
+      );
+
     }
+
   }
+
 
   function drawDino() {
+
     const d = dino;
-    ctx.fillStyle = '#2d6a4f';
-    // 몸통
-    ctx.fillRect(d.x + 8, d.y - 26, 28, 26);
-    // 머리
-    ctx.fillRect(d.x + 26, d.y - 44, 18, 20);
-    // 눈
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(d.x + 37, d.y - 40, 5, 5);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(d.x + 39, d.y - 38, 3, 3);
-    // 꼬리
-    ctx.fillRect(d.x, d.y - 20, 10, 6);
-    ctx.fillStyle = '#2d6a4f';
-    // 팔
-    ctx.fillRect(d.x + 16, d.y - 16, 4, 8);
-    // 다리
-    ctx.fillRect(d.x + 10, d.y - 8, 8, 8);
-    const legH = d.onGround ? (Math.floor(frame / 100) % 2 === 0 ? 8 : 4) : 8;
-    ctx.fillRect(d.x + 24, d.y - 8, 8, legH);
-    // 입
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(d.x + 42, d.y - 32, 6, 3);
+
+    ctx.fillStyle =
+      '#2d6a4f';
+
+
+    /* 몸통 */
+
+    ctx.fillRect(
+      d.x + 8,
+      d.y - 26,
+      28,
+      26
+    );
+
+
+    /* 머리 */
+
+    ctx.fillRect(
+      d.x + 26,
+      d.y - 44,
+      18,
+      20
+    );
+
+
+    /* 눈 */
+
+    ctx.fillStyle =
+      '#fff';
+
+    ctx.fillRect(
+      d.x + 37,
+      d.y - 40,
+      5,
+      5
+    );
+
+
+    ctx.fillStyle =
+      '#000';
+
+    ctx.fillRect(
+      d.x + 39,
+      d.y - 38,
+      3,
+      3
+    );
+
+
+    /* 꼬리 */
+
+    ctx.fillRect(
+      d.x,
+      d.y - 20,
+      10,
+      6
+    );
+
+
+    ctx.fillStyle =
+      '#2d6a4f';
+
+
+    /* 팔 */
+
+    ctx.fillRect(
+      d.x + 16,
+      d.y - 16,
+      4,
+      8
+    );
+
+
+    /* 다리 */
+
+    ctx.fillRect(
+      d.x + 10,
+      d.y - 8,
+      8,
+      8
+    );
+
+
+    const legH =
+      d.onGround
+        ? (
+            Math.floor(
+              frame / 100
+            ) % 2 === 0
+              ? 8
+              : 4
+          )
+        : 8;
+
+
+    ctx.fillRect(
+      d.x + 24,
+      d.y - 8,
+      8,
+      legH
+    );
+
+
+    /* 입 */
+
+    ctx.fillStyle =
+      '#fff';
+
+    ctx.fillRect(
+      d.x + 42,
+      d.y - 32,
+      6,
+      3
+    );
+
   }
+
 
   function drawObstacles() {
-    for (const o of obstacles) {
-      if (o.type === 'cactus') {
-        ctx.fillStyle = '#2e7d32';
-        ctx.fillRect(o.x + 6, o.y, 8, o.h);
-        ctx.fillRect(o.x + 18, o.y + 12, 8, o.h - 12);
-        ctx.fillRect(o.x + 2, o.y + 20, 6, 10);
-        ctx.fillRect(o.x + 24, o.y + 28, 6, 10);
-      } else if (o.type === 'tree') {
-        ctx.strokeStyle = '#6d4c41';
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(o.x + 18, o.y + o.h);
-        ctx.lineTo(o.x + 18, o.y + 24);
-        ctx.stroke();
-        ctx.fillStyle = '#3e7d32';
-        ctx.beginPath();
-        ctx.moveTo(o.x, o.y + 26);
-        ctx.lineTo(o.x + 18, o.y - 4);
-        ctx.lineTo(o.x + 36, o.y + 26);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        // 새
-        ctx.strokeStyle = '#4a5568';
-        ctx.lineWidth = 3;
-        const wob = Math.sin(elapsed / 80) * 6;
-        ctx.beginPath();
-        ctx.moveTo(o.x, o.y + 10 + wob);
-        ctx.quadraticCurveTo(o.x + 13, o.y - 8 - wob, o.x + 26, o.y + 10 + wob);
-        ctx.moveTo(o.x + 26, o.y + 10 + wob);
-        ctx.quadraticCurveTo(o.x + 39, o.y - 8 - wob, o.x + 52, o.y + 10 + wob);
-        ctx.stroke();
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(o.x + 23, o.y + 8 + wob, 6, 5);
+
+    for (
+      const o
+      of obstacles
+    ) {
+
+      if (
+        o.type === 'cactus'
+      ) {
+
+        ctx.fillStyle =
+          '#2e7d32';
+
+        ctx.fillRect(
+          o.x + 6,
+          o.y,
+          8,
+          o.h
+        );
+
+        ctx.fillRect(
+          o.x + 18,
+          o.y + 12,
+          8,
+          o.h - 12
+        );
+
+        ctx.fillRect(
+          o.x + 2,
+          o.y + 20,
+          6,
+          10
+        );
+
+        ctx.fillRect(
+          o.x + 24,
+          o.y + 28,
+          6,
+          10
+        );
+
       }
+
+      else if (
+        o.type === 'tree'
+      ) {
+
+        ctx.strokeStyle =
+          '#6d4c41';
+
+        ctx.lineWidth = 8;
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          o.x + 18,
+          o.y + o.h
+        );
+
+        ctx.lineTo(
+          o.x + 18,
+          o.y + 24
+        );
+
+        ctx.stroke();
+
+
+        ctx.fillStyle =
+          '#3e7d32';
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          o.x,
+          o.y + 26
+        );
+
+        ctx.lineTo(
+          o.x + 18,
+          o.y - 4
+        );
+
+        ctx.lineTo(
+          o.x + 36,
+          o.y + 26
+        );
+
+        ctx.closePath();
+
+        ctx.fill();
+
+      }
+
+      else {
+
+        /* 새 */
+
+        ctx.strokeStyle =
+          '#4a5568';
+
+        ctx.lineWidth = 3;
+
+        const wob =
+          Math.sin(
+            elapsed / 80
+          ) * 6;
+
+
+        ctx.beginPath();
+
+        ctx.moveTo(
+          o.x,
+          o.y + 10 + wob
+        );
+
+        ctx.quadraticCurveTo(
+          o.x + 13,
+          o.y - 8 - wob,
+          o.x + 26,
+          o.y + 10 + wob
+        );
+
+        ctx.moveTo(
+          o.x + 26,
+          o.y + 10 + wob
+        );
+
+        ctx.quadraticCurveTo(
+          o.x + 39,
+          o.y - 8 - wob,
+          o.x + 52,
+          o.y + 10 + wob
+        );
+
+        ctx.stroke();
+
+
+        ctx.fillStyle =
+          '#facc15';
+
+        ctx.fillRect(
+          o.x + 23,
+          o.y + 8 + wob,
+          6,
+          5
+        );
+
+      }
+
     }
+
   }
+
 
   function drawComboEffects() {
-    for (const effect of comboEffects) {
-      const progress = effect.life / effect.maxLife;
-      const scale = 1 + Math.sin(progress * Math.PI) * 0.35;
+
+    for (
+      const effect
+      of comboEffects
+    ) {
+
+      const progress =
+        effect.life /
+        effect.maxLife;
+
+      const scale =
+        1 +
+        Math.sin(
+          progress *
+          Math.PI
+        ) *
+        0.35;
+
+
       ctx.save();
-      ctx.globalAlpha = 1 - progress;
-      ctx.translate(effect.x, effect.y - progress * 42);
-      ctx.scale(scale, scale);
-      ctx.textAlign = 'center';
-      ctx.font = 'bold 24px Courier New';
+
+      ctx.globalAlpha =
+        1 - progress;
+
+      ctx.translate(
+        effect.x,
+        effect.y -
+          progress *
+          42
+      );
+
+      ctx.scale(
+        scale,
+        scale
+      );
+
+      ctx.textAlign =
+        'center';
+
+      ctx.font =
+        'bold 24px Courier New';
+
       ctx.lineWidth = 4;
-      ctx.strokeStyle = '#fff';
-      ctx.strokeText(effect.count + ' COMBO!', 0, 0);
-      ctx.fillStyle = effect.count >= 5 ? '#e67e22' : '#2d6a4f';
-      ctx.fillText(effect.count + ' COMBO!', 0, 0);
+
+      ctx.strokeStyle =
+        '#fff';
+
+      ctx.strokeText(
+        effect.count +
+          ' COMBO!',
+        0,
+        0
+      );
+
+      ctx.fillStyle =
+        effect.count >= 5
+          ? '#e67e22'
+          : '#2d6a4f';
+
+      ctx.fillText(
+        effect.count +
+          ' COMBO!',
+        0,
+        0
+      );
+
       ctx.restore();
+
     }
+
   }
+
 
   function showButtonEffect(label) {
-    if (!started) return;
+
+    if (!started)
+      return;
+
     buttonEffects.push({
-      label: label,
-      // 키 입력은 공룡 주변의 콤보 팝업과 겹치지 않도록 오른쪽 위에 표시한다.
-      x: W - 145 + Math.random() * 70,
-      y: 78 + Math.random() * 24,
+
+      label,
+
+      x:
+        W -
+        145 +
+        Math.random() *
+        70,
+
+      y:
+        78 +
+        Math.random() *
+        24,
+
       life: 0,
+
       maxLife: 520
+
     });
+
   }
+
 
   function drawButtonEffects() {
-    for (const effect of buttonEffects) {
-      const progress = effect.life / effect.maxLife;
-      const alpha = progress < 0.15 ? progress / 0.15 : 1 - progress;
-      const scale = progress < 0.2
-        ? 0.65 + (progress / 0.2) * 0.55
-        : 1.2 - ((progress - 0.2) / 0.8) * 0.35;
-      const rotation = Math.sin(progress * Math.PI * 4) * 0.12 * (1 - progress);
+
+    for (
+      const effect
+      of buttonEffects
+    ) {
+
+      const progress =
+        effect.life /
+        effect.maxLife;
+
+      const alpha =
+        progress < 0.15
+          ? progress / 0.15
+          : 1 - progress;
+
+
+      const scale =
+        progress < 0.2
+          ? 0.65 +
+            (
+              progress /
+              0.2
+            ) *
+            0.55
+
+          : 1.2 -
+            (
+              (progress - 0.2) /
+              0.8
+            ) *
+            0.35;
+
+
+      const rotation =
+        Math.sin(
+          progress *
+          Math.PI *
+          4
+        ) *
+        0.12 *
+        (1 - progress);
+
+
       ctx.save();
-      ctx.globalAlpha = Math.max(0, alpha);
-      ctx.translate(effect.x, effect.y - progress * 18);
+
+      ctx.globalAlpha =
+        Math.max(
+          0,
+          alpha
+        );
+
+      ctx.translate(
+        effect.x,
+        effect.y -
+          progress *
+          18
+      );
+
       ctx.rotate(rotation);
-      ctx.scale(scale, scale);
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.font = 'bold 16px Courier New';
-      const width = Math.max(44, ctx.measureText(effect.label).width + 20);
-      ctx.shadowColor = 'rgba(38, 50, 56, .45)';
+
+      ctx.scale(
+        scale,
+        scale
+      );
+
+      ctx.textAlign =
+        'center';
+
+      ctx.textBaseline =
+        'middle';
+
+      ctx.font =
+        'bold 16px Courier New';
+
+
+      const width =
+        Math.max(
+          44,
+          ctx.measureText(
+            effect.label
+          ).width + 20
+        );
+
+
+      ctx.shadowColor =
+        'rgba(38, 50, 56, .45)';
+
       ctx.shadowBlur = 12;
+
       ctx.shadowOffsetY = 4;
-      ctx.fillStyle = '#263238';
-      ctx.fillRect(-width / 2, -13, width, 26);
-      ctx.shadowColor = 'transparent';
-      ctx.strokeStyle = '#90caf9';
+
+      ctx.fillStyle =
+        '#263238';
+
+      ctx.fillRect(
+        -width / 2,
+        -13,
+        width,
+        26
+      );
+
+
+      ctx.shadowColor =
+        'transparent';
+
+      ctx.strokeStyle =
+        '#90caf9';
+
       ctx.lineWidth = 3;
-      ctx.strokeRect(-width / 2, -13, width, 26);
-      ctx.fillStyle = '#fff';
-      ctx.fillText(effect.label, 0, 1);
+
+      ctx.strokeRect(
+        -width / 2,
+        -13,
+        width,
+        26
+      );
+
+
+      ctx.fillStyle =
+        '#fff';
+
+      ctx.fillText(
+        effect.label,
+        0,
+        1
+      );
+
       ctx.restore();
+
     }
+
   }
+
 
   function draw() {
-    ctx.clearRect(0, 0, W, H);
+
+    ctx.clearRect(
+      0,
+      0,
+      W,
+      H
+    );
+
     drawSun();
+
     drawGround();
+
     drawObstacles();
+
     drawDino();
+
     drawComboEffects();
+
     drawButtonEffects();
+
   }
+
 
   function loop(ts) {
+
     requestAnimationFrame(loop);
-    const dt = Math.min(lastTime ? ts - lastTime : 16, 40);
+
+    const dt =
+      Math.min(
+        lastTime
+          ? ts - lastTime
+          : 16,
+        40
+      );
+
     lastTime = ts;
+
     update(dt);
+
     draw();
+
   }
+
+
+  /* =========================
+     최고 기록
+     ========================= */
 
   function updateDiffBestDisplay() {
-    document.querySelectorAll('.diff-best').forEach(el => {
-      const diff = el.dataset.diff;
-      el.textContent = bestScores[diff] ? `최고: ${bestScores[diff]}` : '최고: —';
-    });
+
+    document
+      .querySelectorAll('.diff-best')
+      .forEach(el => {
+
+        const diff =
+          el.dataset.diff;
+
+        el.textContent =
+          bestScores[diff]
+            ? `최고: ${bestScores[diff]}`
+            : '최고: —';
+
+      });
+
   }
+
+
+  /* =========================
+     게임 시작
+     ========================= */
 
   function startGame() {
-    const selected = document.querySelector('input[name="difficulty"]:checked');
-    difficulty = DIFFICULTIES[selected.value];
-    best = bestScores[selected.value] || 0;
-    bestEl.textContent = best;
-    showLoadingScreen('start', () => {
-      reset();
-      lastMilestone = 0;
-      started = true;
-      msgEl.textContent = '아무 버튼을 눌러 점프!';
-    });
+
+    const selected =
+      document.querySelector(
+        'input[name="difficulty"]:checked'
+      );
+
+    difficulty =
+      DIFFICULTIES[
+        selected.value
+      ];
+
+    best =
+      bestScores[
+        selected.value
+      ] || 0;
+
+    bestEl.textContent =
+      best;
+
+
+    showLoadingScreen(
+      'start',
+      () => {
+
+        reset();
+
+        lastMilestone = 0;
+
+        started = true;
+
+        msgEl.textContent =
+          '아무 버튼을 눌러 점프!';
+
+      }
+    );
+
   }
 
-  // 게임 시작 전에는 키보드와 화면 입력이 점프로 동작하지 않는다.
+
+  /* =========================
+     입력
+     ========================= */
+
   function act() {
+
     jump();
+
   }
+
 
   function buttonLabel(e) {
+
     const labels = {
+
       Space: 'Space',
+
       Enter: 'Enter',
+
       ShiftLeft: 'LShift',
+
       ShiftRight: 'RShift',
+
       ControlLeft: 'LCtrl',
+
       ControlRight: 'RCtrl',
+
       AltLeft: 'LAlt',
+
       AltRight: 'RAlt',
+
       ArrowLeft: 'Left',
+
       ArrowRight: 'Right',
+
       ArrowUp: 'Up',
+
       ArrowDown: 'Down'
+
     };
-    return labels[e.code] || (e.key && e.key.length === 1 ? e.key.toUpperCase() : e.code);
+
+
+    return labels[e.code] ||
+      (
+        e.key &&
+        e.key.length === 1
+          ? e.key.toUpperCase()
+          : e.code
+      );
+
   }
+
 
   function updateKeyCountsDisplay() {
-    const entries = Object.entries(keyPressCounts)
-      .sort((a, b) => b[1] - a[1])
+
+    const entries =
+      Object.entries(
+        keyPressCounts
+      )
+      .sort(
+        (a, b) =>
+          b[1] - a[1]
+      )
       .slice(0, 5);
-    if (entries.length === 0) {
-      keyCountsEl.textContent = '입력 기록: 없음';
+
+
+    if (
+      entries.length === 0
+    ) {
+
+      keyCountsEl.textContent =
+        '입력 기록: 없음';
+
       return;
+
     }
-    keyCountsEl.textContent = '입력 기록: ' + entries.map(([key, count]) => `${key} ${count}회`).join(' · ');
+
+
+    keyCountsEl.textContent =
+      '입력 기록: ' +
+      entries
+        .map(
+          ([key, count]) =>
+            `${key} ${count}회`
+        )
+        .join(' · ');
+
   }
 
-  window.addEventListener('keydown', function (e) {
-    // Esc 키: 게임 중이면 강제 종료
-    if (e.code === 'Escape' && started && !over) {
-      over = true;
-      playOver();
-      msgEl.textContent = '공룡이 게임을 때려치웠습니다. 시작 버튼을 눌러 다시 도전하세요';
-      startButton.textContent = '다시 시작';
-      showLoadingScreen('over', () => {
-        startPanel.style.display = 'block';
-      });
-      return;
-    }
-    
-    if (e.repeat) return;
-    const label = buttonLabel(e);
-    showButtonEffect(label);
-    
-    // 키 누름 횟수 기록 (게임 시작 후에만)
-    if (started && !over) {
-      keyPressCounts[label] = (keyPressCounts[label] || 0) + 1;
-      updateKeyCountsDisplay();
-    }
-    
-    act();
-    if (e.code === 'Space' || e.code.startsWith('Arrow') || e.code === 'Enter') {
-      e.preventDefault();
-    }
-  });
-  canvas.addEventListener('mousedown', function (e) {
-    if (e.button === 0 && started && !over) { // 좌클릭만
-      keyPressCounts[inputTypeLabel] = (keyPressCounts[inputTypeLabel] || 0) + 1;
-      showButtonEffect(inputTypeLabel);
-      updateKeyCountsDisplay();
-    }
-    act();
-  });
-  canvas.addEventListener('touchstart', function (e) {
-    e.preventDefault();
-    if (started && !over) {
-      keyPressCounts[inputTypeLabel] = (keyPressCounts[inputTypeLabel] || 0) + 1;
-      showButtonEffect(inputTypeLabel);
-      updateKeyCountsDisplay();
-    }
-    act();
-  });
 
-  startButton.addEventListener('click', startGame);
-  resetBestButton.addEventListener('click', () => {
-    if (confirm('모든 난이도의 최고기록이 삭제됩니다. 진짜 진행하시겠어요?')) {
-      try {
-        localStorage.removeItem('dinoBestScores');
-        bestScores = {};
-        best = 0;
-        bestEl.textContent = '0';
-        updateDiffBestDisplay();
-        alert('모든 난이도의 최고 기록이 초기화되었습니다.');
-      } catch (e) {
-        alert('초기화에 실패했습니다.');
+  /* =========================
+     키보드
+     ========================= */
+
+  window.addEventListener(
+    'keydown',
+    function (e) {
+
+      if (
+        e.code === 'Escape' &&
+        started &&
+        !over
+      ) {
+
+        over = true;
+
+        playOver();
+
+        msgEl.textContent =
+          '공룡이 게임을 때려치웠습니다. 시작 버튼을 눌러 다시 도전하세요';
+
+        startButton.textContent =
+          '다시 시작';
+
+
+        showLoadingScreen(
+          'over',
+          () => {
+
+            startPanel.style.display =
+              'block';
+
+          }
+        );
+
+        return;
+
       }
+
+
+      if (e.repeat)
+        return;
+
+
+      const label =
+        buttonLabel(e);
+
+
+      showButtonEffect(label);
+
+
+      if (
+        started &&
+        !over
+      ) {
+
+        keyPressCounts[label] =
+          (
+            keyPressCounts[label] ||
+            0
+          ) + 1;
+
+        updateKeyCountsDisplay();
+
+      }
+
+
+      act();
+
+
+      if (
+        e.code === 'Space' ||
+        e.code.startsWith('Arrow') ||
+        e.code === 'Enter'
+      ) {
+
+        e.preventDefault();
+
+      }
+
     }
-  });
-  document.querySelectorAll('input[name="difficulty"]').forEach(radio => {
-    radio.addEventListener('change', () => {
-      updateDiffBestDisplay();
+  );
+
+
+  /* =========================
+     마우스
+     ========================= */
+
+  canvas.addEventListener(
+    'mousedown',
+    function (e) {
+
+      if (
+        e.button === 0 &&
+        started &&
+        !over
+      ) {
+
+        keyPressCounts[
+          inputTypeLabel
+        ] =
+          (
+            keyPressCounts[
+              inputTypeLabel
+            ] || 0
+          ) + 1;
+
+        showButtonEffect(
+          inputTypeLabel
+        );
+
+        updateKeyCountsDisplay();
+
+      }
+
+      act();
+
+    }
+  );
+
+
+  /* =========================
+     터치
+     ========================= */
+
+  canvas.addEventListener(
+    'touchstart',
+    function (e) {
+
+      /*
+       * 화면 스크롤/확대 방지
+       */
+      e.preventDefault();
+
+
+      if (
+        started &&
+        !over
+      ) {
+
+        keyPressCounts[
+          inputTypeLabel
+        ] =
+          (
+            keyPressCounts[
+              inputTypeLabel
+            ] || 0
+          ) + 1;
+
+
+        showButtonEffect(
+          inputTypeLabel
+        );
+
+
+        updateKeyCountsDisplay();
+
+      }
+
+
+      act();
+
+    },
+    {
+      passive: false
+    }
+  );
+
+
+  /* =========================
+     버튼
+     ========================= */
+
+  startButton.addEventListener(
+    'click',
+    startGame
+  );
+
+
+  resetBestButton.addEventListener(
+    'click',
+    () => {
+
+      if (
+        confirm(
+          '모든 난이도의 최고기록이 삭제됩니다. 진짜 진행하시겠어요?'
+        )
+      ) {
+
+        try {
+
+          localStorage.removeItem(
+            'dinoBestScores'
+          );
+
+          bestScores = {};
+
+          best = 0;
+
+          bestEl.textContent =
+            '0';
+
+          updateDiffBestDisplay();
+
+          alert(
+            '모든 난이도의 최고 기록이 초기화되었습니다.'
+          );
+
+        } catch (e) {
+
+          alert(
+            '초기화에 실패했습니다.'
+          );
+
+        }
+
+      }
+
+    }
+  );
+
+
+  document
+    .querySelectorAll(
+      'input[name="difficulty"]'
+    )
+    .forEach(radio => {
+
+      radio.addEventListener(
+        'change',
+        () => {
+
+          updateDiffBestDisplay();
+
+        }
+      );
+
     });
-  });
+
+
+  /* =========================
+     초기화
+     ========================= */
+
   updateDiffBestDisplay();
+
   reset();
-  msgEl.textContent = '난이도를 선택하고 시작 버튼을 눌러주세요';
+
+  msgEl.textContent =
+    '난이도를 선택하고 시작 버튼을 눌러주세요';
+
   lastTime = 0;
+
   requestAnimationFrame(loop);
 
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js').catch(() => {
-        // 서비스 워커가 없어도 게임 자체는 정상 실행됩니다.
-      });
-    });
+
+  /* =========================
+     Service Worker
+     ========================= */
+
+  if (
+    'serviceWorker' in navigator
+  ) {
+
+    window.addEventListener(
+      'load',
+      () => {
+
+        navigator.serviceWorker
+          .register('./sw.js')
+          .catch(() => {
+            // 서비스 워커가 없어도 게임은 정상 작동합니다.
+          });
+
+      }
+    );
+
   }
+
 })();
-
 </script>
 
-<!-- 메인 스크립트에 문제가 생겨도 로딩 화면에 갇히지 않도록 하는 안전장치 -->
+<!--
+  메인 스크립트에 문제가 생겨도
+  로딩 화면에 영원히 갇히지 않도록 하는 안전장치
+-->
+
 <script>
-  setTimeout(() => {
-    const ls = document.getElementById('loadingScreen');
-    const sp = document.getElementById('startPanel');
-    const msg = document.getElementById('msg');
 
-    // 아직 초기 화면에서 로딩 중일 때만 개입합니다.
-    if (ls && getComputedStyle(ls).display !== 'none') {
-      ls.style.display = 'none';
-      if (sp) sp.style.display = 'block';
-      if (msg) msg.textContent = '난이도를 선택하고 시작 버튼을 눌러주세요';
-    }
-  }, 8000);
+setTimeout(() => {
+
+  const ls =
+    document.getElementById(
+      'loadingScreen'
+    );
+
+  const sp =
+    document.getElementById(
+      'startPanel'
+    );
+
+  const msg =
+    document.getElementById(
+      'msg'
+    );
+
+
+  if (
+    ls &&
+    getComputedStyle(ls).display !== 'none'
+  ) {
+
+    ls.style.display =
+      'none';
+
+    if (sp)
+      sp.style.display =
+        'block';
+
+    if (msg)
+      msg.textContent =
+        '난이도를 선택하고 시작 버튼을 눌러주세요';
+
+  }
+
+}, 8000);
+
 </script>
+
 </body>
 </html>
